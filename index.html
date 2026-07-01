@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Type the Retriever</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0b0a08;
+    --ink-2:#131110;
+    --gold:#c9a35a;
+    --gold-light:#e9d3a3;
+    --gold-dim:#8a6d3b;
+    --cream:#f1ece0;
+    --cream-dim:#a89f8d;
+    --line:rgba(201,163,90,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    padding:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, #201a10 0%, var(--ink) 55%),
+      var(--ink);
+    color:var(--cream);
+    font-family:'JetBrains Mono', monospace;
+    overflow-x:hidden;
+  }
+  .stage{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:40px 16px;
+  }
+  .card{
+    position:relative;
+    width:100%;
+    max-width:640px;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(201,163,90,0.05), rgba(0,0,0,0) 30%);
+    padding:36px 30px 30px;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    inset:8px;
+    border:1px solid rgba(201,163,90,0.14);
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:0.32em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+    text-align:center;
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:'Cormorant Garamond', serif;
+    font-weight:500;
+    font-style:italic;
+    font-size:clamp(28px,5vw,38px);
+    text-align:center;
+    color:var(--gold-light);
+    margin:0 0 6px;
+    letter-spacing:0.01em;
+  }
+  .sub{
+    text-align:center;
+    font-size:12.5px;
+    color:var(--cream-dim);
+    margin:0 0 26px;
+    line-height:1.6;
+  }
+  .sub b{color:var(--gold);font-weight:500;}
+
+  .progress-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-bottom:20px;
+  }
+  .progress-track{
+    flex:1;
+    height:1px;
+    background:var(--line);
+    position:relative;
+  }
+  .progress-fill{
+    position:absolute;
+    left:0; top:-1px;
+    height:3px;
+    width:0%;
+    background:linear-gradient(90deg, var(--gold-dim), var(--gold-light));
+    transition:width .25s ease;
+  }
+  .progress-num{
+    font-size:13px;
+    color:var(--gold);
+    letter-spacing:0.05em;
+    min-width:44px;
+    text-align:right;
+  }
+
+  .game-area{
+    position:relative;
+    width:100%;
+    aspect-ratio:5/4;
+    border:1px solid var(--line);
+    background:
+      repeating-linear-gradient(0deg, rgba(201,163,90,0.03) 0px, rgba(201,163,90,0.03) 1px, transparent 1px, transparent 28px);
+    overflow:hidden;
+  }
+  .game-area::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+    pointer-events:none;
+  }
+
+  svg#dog{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+  }
+  .dog-line{
+    fill:none;
+    stroke:var(--gold-light);
+    stroke-width:2.4;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    filter:drop-shadow(0 0 3px rgba(233,211,163,0.35));
+  }
+  .dog-fill{
+    fill:var(--gold);
+    opacity:0;
+    transition:opacity .6s ease;
+  }
+
+  .falling-letter{
+    position:absolute;
+    top:-30px;
+    font-size:22px;
+    font-weight:700;
+    color:var(--gold-light);
+    text-shadow:0 0 10px rgba(233,211,163,0.5);
+    user-select:none;
+    pointer-events:none;
+    will-change:transform;
+  }
+  .falling-letter.missed{
+    color:var(--gold-dim);
+    opacity:0;
+    transition:opacity .4s ease;
+  }
+  .falling-letter.hit{
+    color:#fff;
+    transform:scale(1.6);
+    opacity:0;
+    transition:all .25s ease;
+  }
+
+  .status-line{
+    display:flex;
+    justify-content:space-between;
+    margin-top:16px;
+    font-size:11px;
+    letter-spacing:0.08em;
+    color:var(--cream-dim);
+    text-transform:uppercase;
+  }
+  .status-line span{color:var(--gold);}
+
+  /* on-screen keys, mainly for touch devices */
+  .keys{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    justify-content:center;
+    margin-top:20px;
+  }
+  .keys button{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    width:28px;
+    height:28px;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--cream-dim);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .keys button:hover, .keys button:active{
+    border-color:var(--gold);
+    color:var(--gold-light);
+  }
+
+  .start-overlay, .end-overlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    background:rgba(11,10,8,0.92);
+    text-align:center;
+    padding:20px;
+    z-index:5;
+  }
+  .end-overlay{display:none;}
+  .plaque{
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:clamp(20px,4.2vw,28px);
+    color:var(--gold-light);
+    line-height:1.4;
+    max-width:420px;
+  }
+  .plaque-sub{
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--gold-dim);
+  }
+  .btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    background:transparent;
+    color:var(--gold);
+    border:1px solid var(--gold-dim);
+    padding:12px 24px;
+    cursor:pointer;
+    transition:all .2s ease;
+  }
+  .btn:hover{
+    border-color:var(--gold);
+    color:var(--gold-light);
+    background:rgba(201,163,90,0.08);
+  }
+
+  footer{
+    text-align:center;
+    margin-top:22px;
+    font-size:10px;
+    letter-spacing:0.1em;
+    color:var(--gold-dim);
+    text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="card">
+    <div class="eyebrow">A Little Diversion</div>
+    <h1>Type the Retriever</h1>
+    <p class="sub">Letters fall from above. Press the matching key on your keyboard<br>before they land, and a surprise awaits you.</p>
+
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-num" id="progressNum">0%</div>
+    </div>
+
+    <div class="game-area" id="gameArea">
+      <svg id="dog" viewBox="0 0 300 340" preserveAspectRatio="xMidYMid meet"></svg>
+
+      <div class="start-overlay" id="startOverlay">
+        <div class="plaque">Ready when you are.</div>
+        <div class="plaque-sub">26 letters. One dog.</div>
+        <button class="btn" id="startBtn">Begin</button>
+      </div>
+
+      <div class="end-overlay" id="endOverlay">
+        <div class="plaque" id="endMessage"></div>
+        <button class="btn" id="restartBtn">Play again</button>
+      </div>
+    </div>
+
+    <div class="status-line">
+      <div>Streak <span id="streakNum">0</span></div>
+      <div>Missed <span id="missedNum">0</span></div>
+    </div>
+
+    <div class="keys" id="onScreenKeys"></div>
+
+    <footer>randycheung.com</footer>
+  </div>
+</div>
+
+<script>
+(function(){
+  const gameArea = document.getElementById('gameArea');
+  const svg = document.getElementById('dog');
+  const progressFill = document.getElementById('progressFill');
+  const progressNum = document.getElementById('progressNum');
+  const streakNumEl = document.getElementById('streakNum');
+  const missedNumEl = document.getElementById('missedNum');
+  const startOverlay = document.getElementById('startOverlay');
+  const endOverlay = document.getElementById('endOverlay');
+  const endMessage = document.getElementById('endMessage');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const onScreenKeys = document.getElementById('onScreenKeys');
+
+  // ---- Golden retriever line art (front-facing, sitting) ----
+  // Each entry is drawn in sequence as progress advances.
+  const dogPaths = [
+    // right ear
+    "M108,70 C78,95 68,145 92,182 C104,200 120,196 122,178 C126,148 118,108 132,78 C120,66 116,64 108,70 Z",
+    // left ear
+    "M192,70 C222,95 232,145 208,182 C196,200 180,196 178,178 C174,148 182,108 168,78 C180,66 184,64 192,70 Z",
+    // head outline
+    "M150,44 C112,44 90,74 90,112 C90,150 112,178 150,178 C188,178 210,150 210,112 C210,74 188,44 150,44 Z",
+    // muzzle
+    "M124,140 C124,164 138,178 150,178 C162,178 176,164 176,140 C176,124 164,116 150,116 C136,116 124,124 124,140 Z",
+    // left eye
+    "M126,104 C126,98 132,94 137,96 C142,98 142,106 137,109 C132,112 126,110 126,104 Z",
+    // right eye
+    "M174,104 C174,98 168,94 163,96 C158,98 158,106 163,109 C168,112 174,110 174,104 Z",
+    // nose
+    "M150,124 C144,124 140,128 140,132 C140,137 145,140 150,140 C155,140 160,137 160,132 C160,128 156,124 150,124 Z",
+    // mouth
+    "M136,150 C142,160 150,162 150,162 C150,162 158,160 164,150",
+    // tongue
+    "M148,162 C148,172 152,178 152,178 C152,178 156,172 156,162",
+    // collar
+    "M104,178 C118,190 182,190 196,178",
+    // collar tag
+    "M150,196 C144,196 140,200 140,205 C140,211 144,215 150,215 C156,215 160,211 160,205 C160,200 156,196 150,196 Z",
+    // neck / chest
+    "M104,180 C96,208 92,232 96,252 L204,252 C208,232 204,208 196,180",
+    // body / haunches
+    "M96,252 C82,268 74,292 78,316 C82,332 100,336 118,332 L182,332 C200,336 218,332 222,316 C226,292 218,268 204,252 Z",
+    // left front leg
+    "M120,252 L118,320",
+    // right front leg
+    "M180,252 L182,320",
+    // left paw
+    "M108,320 C108,328 114,334 122,334 C130,334 134,328 134,320",
+    // right paw
+    "M166,320 C166,328 172,334 180,334 C188,334 192,328 192,320",
+    // tail
+    "M222,290 C244,282 256,262 250,242 C246,228 232,224 228,236 C224,248 234,254 240,248"
+  ];
+
+  dogPaths.forEach(d=>{
+    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d", d);
+    p.setAttribute("class","dog-line");
+    svg.appendChild(p);
+  });
+
+  const pathEls = Array.from(svg.querySelectorAll('path'));
+  const pathLens = pathEls.map(p => p.getTotalLength());
+  const totalLen = pathLens.reduce((a,b)=>a+b,0);
+  pathEls.forEach((p,i)=>{
+    p.style.strokeDasharray = pathLens[i];
+    p.style.strokeDashoffset = pathLens[i];
+  });
+
+  function renderReveal(progress){
+    // progress: 0..1
+    let remaining = progress * totalLen;
+    pathEls.forEach((p,i)=>{
+      const len = pathLens[i];
+      const drawn = Math.min(len, remaining);
+      p.style.strokeDashoffset = len - drawn;
+      remaining = Math.max(0, remaining - len);
+    });
+  }
+
+  // ---- game state ----
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const TOTAL_HITS = 26;
+  let hits = 0;
+  let missed = 0;
+  let streak = 0;
+  let running = false;
+  let spawnTimer = null;
+  let activeLetters = [];
+
+  function baseFallDuration(){
+    // gets a little faster as you progress, floors at 3.2s
+    const t = 6.4 - (hits / TOTAL_HITS) * 3.2;
+    return Math.max(3.2, t);
+  }
+  function spawnInterval(){
+    const t = 1500 - (hits / TOTAL_HITS) * 700;
+    return Math.max(750, t);
+  }
+
+  function spawnLetter(){
+    if(!running) return;
+    const el = document.createElement('div');
+    const ch = LETTERS[Math.floor(Math.random()*LETTERS.length)];
+    el.className = 'falling-letter';
+    el.textContent = ch;
+    el.dataset.letter = ch;
+    const areaW = gameArea.clientWidth;
+    const x = 12 + Math.random() * (areaW - 34);
+    el.style.left = x + 'px';
+    gameArea.appendChild(el);
+
+    const duration = baseFallDuration();
+    const areaH = gameArea.clientHeight;
+    const start = performance.now();
+    const obj = { el, ch, start, duration, areaH, done:false };
+    activeLetters.push(obj);
+
+    function tick(now){
+      if(obj.done) return;
+      const t = (now - obj.start) / (obj.duration*1000);
+      if(t >= 1){
+        missLetter(obj);
+        return;
+      }
+      el.style.transform = `translateY(${t*(obj.areaH-6)}px)`;
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function missLetter(obj){
+    if(obj.done) return;
+    obj.done = true;
+    obj.el.classList.add('missed');
+    setTimeout(()=>obj.el.remove(), 400);
+    activeLetters = activeLetters.filter(o => o !== obj);
+    missed++;
+    streak = 0;
+    missedNumEl.textContent = missed;
+    streakNumEl.textContent = streak;
+  }
+
+  function hitLetter(obj){
+    if(obj.done) return;
+    obj.done = true;
+    obj.el.classList.add('hit');
+    setTimeout(()=>obj.el.remove(), 250);
+    activeLetters = activeLetters.filter(o => o !== obj);
+    hits++;
+    streak++;
+    streakNumEl.textContent = streak;
+    const progress = Math.min(1, hits / TOTAL_HITS);
+    progressFill.style.width = (progress*100).toFixed(0) + '%';
+    progressNum.textContent = (progress*100).toFixed(0) + '%';
+    renderReveal(progress);
+    if(hits >= TOTAL_HITS){
+      endGame();
+    }
+  }
+
+  function handleKey(letter){
+    if(!running) return;
+    letter = letter.toUpperCase();
+    // pick the earliest-spawned active letter matching this key
+    let match = null;
+    for(const o of activeLetters){
+      if(o.ch === letter){ match = o; break; }
+    }
+    if(match) hitLetter(match);
+  }
+
+  function onKeyDown(e){
+    if(!running) return;
+    const k = e.key;
+    if(/^[a-zA-Z]$/.test(k)) handleKey(k);
+  }
+
+  function startGame(){
+    hits = 0; missed = 0; streak = 0;
+    running = true;
+    activeLetters.forEach(o=>o.el.remove());
+    activeLetters = [];
+    pathEls.forEach(p => p.style.strokeDashoffset = pathLens[pathEls.indexOf(p)]);
+    renderReveal(0);
+    progressFill.style.width = '0%';
+    progressNum.textContent = '0%';
+    streakNumEl.textContent = '0';
+    missedNumEl.textContent = '0';
+    startOverlay.style.display = 'none';
+    endOverlay.style.display = 'none';
+    scheduleSpawn();
+  }
+
+  function scheduleSpawn(){
+    if(!running) return;
+    spawnLetter();
+    spawnTimer = setTimeout(scheduleSpawn, spawnInterval());
+  }
+
+  function endGame(){
+    running = false;
+    clearTimeout(spawnTimer);
+    activeLetters.forEach(o=>{ o.done = true; o.el.remove(); });
+    activeLetters = [];
+    renderReveal(1);
+    setTimeout(()=>{
+      endMessage.textContent = "You just wasted your time. Find something else better to do!";
+      endOverlay.style.display = 'flex';
+    }, 700);
+  }
+
+  // on-screen keys for touch devices
+  LETTERS.forEach(ch=>{
+    const b = document.createElement('button');
+    b.textContent = ch;
+    b.addEventListener('click', ()=> handleKey(ch));
+    onScreenKeys.appendChild(b);
+  });
+
+  document.addEventListener('keydown', onKeyDown);
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', startGame);
+
+  renderReveal(0);
+})();
+</script>
+
+</body>
+</html>
